@@ -59,7 +59,7 @@ App icon source is the blue badge cropped from `icon.png`:
 1. **+ New Project** → you land in the editor.
 2. **+ New Tab** on the right sidebar, click it to select.
 3. Just type numbers — they appear instantly on the highlighted string.
-   - `Shift+1…6` picks the string (1 = high e top, 6 = low E bottom)
+   - `Shift+1…6` picks the string (1 = high e top, 6 = low E bottom) — or just press its tuning letter `E A D G B` (single `E` = low E, double-press `E` = high e)
    - `0…9` writes a note; type fast twice for `10…24` (e.g. `1` then `2` = `12`)
    - hold `Ctrl` (or `Alt`, or latch the **Chord** button) to write a chord: everything typed while held goes into **one new column**, previous notes are never touched. `Shift+1…6` still switches strings mid-chord. Release to finish the chord
    - `Backspace` / `Enter` deletes the last note, `Space` adds a silent gap

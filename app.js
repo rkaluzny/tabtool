@@ -15,6 +15,8 @@ let redoStack = [];
 let lastDigitTime = 0;
 let lastDigitStep = -1;
 let lastDigitString = -1;
+let lastLetterTime = 0;
+let lastLetterKey = '';
 let clipboardTab = null;
 
 const $ = (id) => document.getElementById(id);
@@ -212,7 +214,7 @@ function renderStringPicker() {
     const b = document.createElement('button');
     b.className = 'sp-btn' + (t.activeString === s ? ' active' : '');
     b.innerHTML = `${STRING_LABELS[s]}<small>${s} · ${STRING_NAMES[s]}</small>`;
-    b.title = `String ${s} (${STRING_NAMES[s]}) — Shift+${s}`;
+    b.title = `String ${s} (${STRING_NAMES[s]}) — Shift+${s} or press ${s === 1 ? 'E twice' : ({ 6: 'E', 5: 'A', 4: 'D', 3: 'G', 2: 'B' })[s]}`;
     b.onclick = () => { pushUndo(); t.activeString = s; lastDigitTime = 0; touch(); renderEditor(); $('staff-scroll').focus(); };
     wrap.appendChild(b);
   }
@@ -496,7 +498,7 @@ function openHelp() {
   <ul>
     <li><kbd>0</kbd>…<kbd>9</kbd> — write a note on the active string (new column each time)</li>
     <li>Type fast twice (e.g. <kbd>1</kbd> then <kbd>2</kbd>) → fret <b>12</b> (up to max)</li>
-    <li><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>6</kbd> — choose string (highlighted row). Strings: 1 = high e (top), 6 = low E (bottom)</li>
+    <li><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>6</kbd> — choose string (highlighted row). Strings: 1 = high e (top), 6 = low E (bottom). Faster: just press the string's tuning letter <kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>G</kbd> <kbd>B</kbd> — single <kbd>E</kbd> is the low E, double-press <kbd>E</kbd> for the high e</li>
     <li>Hold <kbd>Ctrl</kbd> (or <kbd>Alt</kbd> if your browser steals <kbd>Ctrl</kbd>+number to switch tabs) — everything you type while it is held goes into <b>one new column</b> without touching previous notes. While holding it, <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>6</kbd> still switches strings, so: hold <kbd>Ctrl</kbd> → <kbd>5</kbd> → <kbd>Shift</kbd>+<kbd>2</kbd> → <kbd>7</kbd> writes a chord with fret 5 on string 1 and fret 7 on string 2. Release <kbd>Ctrl</kbd> to finish the chord. Two-digit frets (<kbd>1</kbd> then <kbd>2</kbd> fast = <b>12</b>) work inside chords too. The <i>Chord</i> button latches the same: toggle on, type the chord, toggle off</li>
     <li><kbd>⌫</kbd> / <kbd>⏎</kbd> — delete last note · <kbd>Space</kbd> — silent gap · <kbd>↑</kbd><kbd>↓</kbd> change string, <kbd>←</kbd><kbd>→</kbd> move cursor</li>
     <li>Or use the UI: string buttons, number pad, + Gap, Delete</li>
@@ -669,6 +671,25 @@ function init() {
     if (e.shiftKey && !e.metaKey && /^Digit[1-6]$/.test(e.code)) {
       e.preventDefault();
       t.activeString = parseInt(e.code.slice(5), 10);
+      lastDigitTime = 0;
+      touch(); renderEditor();
+      return;
+    }
+    // Letter shortcut: press the string's tuning note to select it
+    // (E A D G B — case-insensitive, no modifiers needed).
+    // Low E and high e share a letter: single E = low E (6),
+    // double-press E = high e (1).
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key && /^[eadgb]$/i.test(e.key)) {
+      e.preventDefault();
+      const letter = e.key.toLowerCase();
+      const now = Date.now();
+      if (letter === 'e' && lastLetterKey === 'e' && now - lastLetterTime < 600) {
+        t.activeString = 1;
+        lastLetterTime = 0; lastLetterKey = '';
+      } else {
+        t.activeString = { e: 6, a: 5, d: 4, g: 3, b: 2 }[letter];
+        lastLetterTime = now; lastLetterKey = letter;
+      }
       lastDigitTime = 0;
       touch(); renderEditor();
       return;
