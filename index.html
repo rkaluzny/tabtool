@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TabTool 0.1.0</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ DASHBOARD ============ -->
+  <section id="view-dashboard" class="view">
+    <header class="topbar">
+      <h1 class="logo">TabTool</h1>
+      <div class="topbar-actions">
+        <button id="btn-new-project" class="btn btn-primary">+ New Project</button>
+        <button id="btn-help" class="btn btn-ghost">? Help</button>
+        <button id="btn-settings" class="btn btn-ghost">⚙ Settings</button>
+        <button id="btn-import" class="btn btn-ghost">Import</button>
+        <button id="btn-export-all" class="btn btn-ghost">Export All</button>
+      </div>
+    </header>
+    <div class="search-block">
+      <label>Search projects...</label>
+      <input id="search" type="text" placeholder="" autocomplete="off" />
+    </div>
+    <div id="project-list" class="project-list"></div>
+  </section>
+
+  <!-- ============ EDITOR ============ -->
+  <section id="view-editor" class="view hidden">
+    <header class="topbar topbar-editor">
+      <div class="proj-title-wrap">
+        <h2 id="editor-project-name">Untitled</h2>
+        <button id="btn-rename-project" class="btn btn-small btn-ghost">Rename</button>
+      </div>
+      <div class="topbar-actions">
+        <button id="btn-undo" class="btn btn-square btn-primary" title="Undo">↩</button>
+        <button id="btn-redo" class="btn btn-square btn-primary" title="Redo">↪</button>
+        <button id="btn-export-txt" class="btn btn-ghost">⎙ TXT</button>
+        <button id="btn-export-json" class="btn btn-ghost">JSON</button>
+        <button id="btn-editor-help" class="btn btn-square btn-ghost">?</button>
+        <button id="btn-back" class="btn btn-ghost">← Dashboard</button>
+      </div>
+    </header>
+
+    <div class="editor-layout">
+      <main class="editor-main">
+        <div class="field">
+          <label>Tab / Riff name</label>
+          <input id="tab-name" type="text" maxlength="70" value="New Tab" />
+          <div class="char-count"><span id="tab-name-count">7</span> / 70</div>
+        </div>
+
+        <div class="staff-toolbar">
+          <div class="string-picker" id="string-picker" title="Active string (Shift+1…6)"></div>
+          <div class="staff-hint" id="staff-hint">String <b id="hint-string">1</b> active — type <b>0–9</b> to write · hold <b>Ctrl</b> (<b>Alt</b> works too): everything typed while held lands in <b>one new column</b> — <b>Shift+1…6</b> switches string mid-chord · release to finish · <b>⌫/⏎</b> deletes · <b>Space</b> = gap</div>
+        </div>
+
+        <div id="staff-scroll" class="staff-scroll" tabindex="0">
+          <div id="staff" class="staff"></div>
+          <div class="staff-empty hidden" id="staff-empty">
+            <p>No notes yet. Select a string, then just start typing numbers.</p>
+            <p class="muted">Tip: <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>6</kbd> picks the string · hold <kbd>Ctrl</kbd> to stack a chord · <kbd>Space</kbd> adds silence.</p>
+          </div>
+        </div>
+
+        <div class="numpad-row">
+          <div class="numpad" id="numpad"></div>
+          <div class="numpad-tools">
+            <button id="btn-chord" class="btn btn-ghost" title="Latch chord mode: everything typed while latched goes into one new column. Toggle off to finish.">Chord (Ctrl)</button>
+            <button id="btn-space" class="btn btn-ghost" title="Insert empty step (Space)">+ Gap</button>
+            <button id="btn-delete-note" class="btn btn-ghost" title="Delete last note (Backspace / Enter)">⌫ Delete</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Description / Notes</label>
+          <textarea id="tab-desc" maxlength="250" rows="2"></textarea>
+          <div class="char-count"><span id="tab-desc-count">0</span> / 250</div>
+        </div>
+
+        <div class="export-preview-block">
+          <label>Text preview <span class="muted">— this is exactly what TXT export writes</span></label>
+          <pre id="ascii-preview" class="ascii-preview"></pre>
+        </div>
+      </main>
+
+      <aside class="editor-side">
+        <h3>Tabs</h3>
+        <button id="btn-new-tab" class="btn btn-primary btn-block">+ New Tab</button>
+        <div class="copy-row">
+          <button id="btn-copy-tab" class="btn btn-ghost btn-block">Copy</button>
+          <button id="btn-paste-tab" class="btn btn-ghost btn-block">Paste</button>
+        </div>
+        <div id="tab-list" class="tab-list"></div>
+        <h3>Settings</h3>
+        <label class="side-label">Steps per line (text export)</label>
+        <input id="setting-wrap" type="number" min="8" max="64" value="28" />
+        <label class="side-label">Fret max (for 2-digit entry)</label>
+        <input id="setting-fretmax" type="number" min="12" max="30" value="24" />
+        <button id="btn-delete-tab" class="btn btn-danger btn-block">🗑 Delete tab</button>
+        <p class="side-help">Click a cell to move the cursor there.<br/>Click a note to delete it.</p>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<!-- modals -->
+<div id="modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal" id="modal-box">
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button id="modal-close" class="btn btn-ghost">Close</button>
+      <button id="modal-ok" class="btn btn-primary hidden">OK</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-import" accept=".json,application/json" class="hidden" />
+<script src="app.js"></script>
+</body>
+</html>

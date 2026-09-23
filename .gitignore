@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# electron-builder output
+dist/
+
+# npm / logs
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# electron-builder cache (downloaded tools, safe to re-download)
+~/.cache/electron/
+~/.cache/electron-builder/

@@ -1,0 +1,59 @@
+{
+  "name": "tabtool",
+  "version": "0.1.0",
+  "description": "TabTool — quick guitar tab writer",
+  "author": {
+    "name": "Robin Kaluzny",
+    "email": "robin.jerome.kaluzny@gmail.com"
+  },
+  "homepage": "*",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --linux AppImage deb --publish never",
+    "dist:linux": "electron-builder --linux AppImage deb --publish never",
+    "dist:win": "electron-builder --win nsis portable --publish never",
+    "dist:mac": "electron-builder --mac dmg zip --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.tabtool.app",
+    "productName": "TabTool",
+    "files": [
+      "index.html",
+      "app.js",
+      "styles.css",
+      "main.js",
+      "favicon.ico",
+      "build/icon.png",
+      "build/icon.ico",
+      "build/icon.icns"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.music",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "AudioVideo;Music",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  }
+}
