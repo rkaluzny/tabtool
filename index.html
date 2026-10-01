@@ -55,15 +55,15 @@
         </div>
 
         <div class="staff-toolbar">
-          <div class="string-picker" id="string-picker" title="Active string (Shift+1…6)"></div>
-          <div class="staff-hint" id="staff-hint">String <b id="hint-string">1</b> active — type <b>0–9</b> to write · press <b>E A D G B</b> for the string (<b>E</b> twice = high e) · hold <b>Ctrl</b> (<b>Alt</b> works too): everything typed while held lands in <b>one new column</b> — <b>Shift+1…6</b> switches string mid-chord · release to finish · <b>⌫/⏎</b> deletes · <b>Space</b> = gap</div>
+          <div class="string-picker" id="string-picker" title="Active string (Shift+number)"></div>
+          <div class="staff-hint" id="staff-hint">String <b id="hint-string">1</b> active — type <b>0–9</b> to write · press the tuning letter for the string · hold <b>Ctrl</b> (<b>Alt</b> works too): everything typed while held lands in <b>one new column</b> — <b>Shift+1…8</b> switches string mid-chord · release to finish · click a note to edit it, <b>Ctrl</b>+type to add a string to its chord · <b>⌫/⏎</b> deletes · <b>Space</b> = gap</div>
         </div>
 
         <div id="staff-scroll" class="staff-scroll" tabindex="0">
           <div id="staff" class="staff"></div>
           <div class="staff-empty hidden" id="staff-empty">
             <p>No notes yet. Select a string, then just start typing numbers.</p>
-            <p class="muted">Tip: <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>6</kbd> picks the string · hold <kbd>Ctrl</kbd> to stack a chord · <kbd>Space</kbd> adds silence.</p>
+            <p class="muted">Tip: <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> picks the string · hold <kbd>Ctrl</kbd> to stack a chord · <kbd>Space</kbd> adds silence.</p>
           </div>
         </div>
 
@@ -97,12 +97,14 @@
         </div>
         <div id="tab-list" class="tab-list"></div>
         <h3>Settings</h3>
+        <label class="side-label">Strings (4–8)</label>
+        <input id="setting-strings" type="number" min="4" max="8" value="6" />
         <label class="side-label">Steps per line (text export)</label>
         <input id="setting-wrap" type="number" min="8" max="64" value="28" />
         <label class="side-label">Fret max (for 2-digit entry)</label>
         <input id="setting-fretmax" type="number" min="12" max="30" value="24" />
         <button id="btn-delete-tab" class="btn btn-danger btn-block">🗑 Delete tab</button>
-        <p class="side-help">Click a cell to move the cursor there.<br/>Click a note to delete it.</p>
+        <p class="side-help">Click a cell to move the cursor there.<br/>Click a note to edit it in place.<br/>Right-click a note to delete it.<br/>Right-click a string label (left) to rename its tuning.</p>
       </aside>
     </div>
   </section>

@@ -1,8 +1,8 @@
 /* TabTool — vanilla JS */
 const LS_KEY = 'tabtool.projects.v1';
 const LS_THEME = 'tabtool.theme';
-const STRING_LABELS = { 1: 'e', 2: 'B', 3: 'G', 4: 'D', 5: 'A', 6: 'E' };
-const STRING_NAMES = { 1: 'high e', 2: 'B', 3: 'G', 4: 'D', 5: 'A', 6: 'low E' };
+const MIN_STRINGS = 4;
+const MAX_STRINGS = 8;
 
 let projects = loadProjects();
 let currentProjectId = null;
@@ -10,6 +10,37 @@ let currentTabId = null;
 let cursorPos = 0; // insertion index within steps
 let chordLatch = false; // UI toggle equivalent of holding Ctrl
 let chordAnchor = -1; // step index of the chord column currently being built (-1 = none)
+let selected = null; // { step, string } — note selected by clicking, for in-place edit (-null = none)
+
+/* ---------- strings: per-tab count + tunable labels ---------- */
+function defaultLabelsForCount(n) {
+  if (n === 4) return ['G', 'D', 'A', 'E'];
+  if (n === 5) return ['G', 'D', 'A', 'E', 'B'];
+  if (n === 7) return ['e', 'B', 'G', 'D', 'A', 'E', 'B'];
+  if (n === 8) return ['e', 'B', 'G', 'D', 'A', 'E', 'B', 'F#'];
+  return ['e', 'B', 'G', 'D', 'A', 'E'];
+}
+// Top-to-bottom tuning labels, e.g. ['e','B','G','D','A','E'] for standard 6-string.
+function ensureTabStrings(tab) {
+  if (!tab || typeof tab !== 'object') return tab;
+  let n = parseInt(tab.stringCount, 10);
+  if (isNaN(n)) n = 6;
+  tab.stringCount = Math.max(MIN_STRINGS, Math.min(MAX_STRINGS, n));
+  const d = defaultLabelsForCount(tab.stringCount);
+  if (!Array.isArray(tab.stringLabels)) tab.stringLabels = d.slice();
+  if (tab.stringLabels.length > tab.stringCount) tab.stringLabels = tab.stringLabels.slice(0, tab.stringCount);
+  while (tab.stringLabels.length < tab.stringCount) tab.stringLabels.push(d[tab.stringLabels.length] || ('S' + (tab.stringLabels.length + 1)));
+  for (let i = 0; i < tab.stringCount; i++) {
+    const v = String(tab.stringLabels[i] == null ? '' : tab.stringLabels[i]).trim().slice(0, 3);
+    tab.stringLabels[i] = v || d[i];
+  }
+  if (!tab.activeString || tab.activeString < 1 || tab.activeString > tab.stringCount) tab.activeString = 1;
+  return tab;
+}
+function strLabel(tab, s) {
+  if (tab && Array.isArray(tab.stringLabels) && tab.stringLabels[s - 1]) return tab.stringLabels[s - 1];
+  return defaultLabelsForCount(tab && tab.stringCount ? tab.stringCount : 6)[s - 1] || ('S' + s);
+}
 let undoStack = [];
 let redoStack = [];
 let lastDigitTime = 0;
@@ -26,7 +57,9 @@ function loadProjects() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) arr.forEach((p) => { (p.tabs || []).forEach(ensureTabStrings); });
+    return Array.isArray(arr) ? arr : [];
   } catch { return []; }
 }
 function saveProjects() { localStorage.setItem(LS_KEY, JSON.stringify(projects)); }
@@ -44,13 +77,15 @@ function newProject(name) {
   return p;
 }
 function newTab(name) {
-  return { id: uid(), name: name || 'New Tab', description: '', steps: [], activeString: 1, wrap: 28 };
+  return { id: uid(), name: name || 'New Tab', description: '', steps: [], activeString: 1, wrap: 28, stringCount: 6, stringLabels: defaultLabelsForCount(6) };
 }
 function getProject() { return projects.find((p) => p.id === currentProjectId); }
 function getTab() {
   const p = getProject();
   if (!p) return null;
-  return p.tabs.find((t) => t.id === currentTabId) || null;
+  const t = p.tabs.find((t) => t.id === currentTabId) || null;
+  if (t) ensureTabStrings(t);
+  return t;
 }
 function touch() {
   const p = getProject();
@@ -80,8 +115,10 @@ function stepWidth(step) {
   return w;
 }
 function tabToAscii(tab, wrapAt) {
+  ensureTabStrings(tab);
   const per = wrapAt || tab.wrap || 28;
-  const labels = [STRING_LABELS[1], STRING_LABELS[2], STRING_LABELS[3], STRING_LABELS[4], STRING_LABELS[5], STRING_LABELS[6]];
+  const labels = [];
+  for (let s = 1; s <= tab.stringCount; s++) labels.push(strLabel(tab, s));
   if (!tab.steps.length) {
     return labels.map((l) => `${l}|--------------------------------`).join('\n');
   }
@@ -89,7 +126,7 @@ function tabToAscii(tab, wrapAt) {
   for (let i = 0; i < tab.steps.length; i += per) chunks.push(tab.steps.slice(i, i + per));
   const outLines = [];
   chunks.forEach((chunk) => {
-    for (let s = 1; s <= 6; s++) {
+    for (let s = 1; s <= tab.stringCount; s++) {
       let line = labels[s - 1] + '|';
       // leading dash like classic tabs
       line += '-';
@@ -154,10 +191,11 @@ function renderDashboard(filter) {
   });
 }
 function miniTabHTML(tab) {
+  ensureTabStrings(tab);
   if (!tab) return '<div class="ml"></div>'.repeat(6);
   let html = '';
   const sample = (tab.steps || []).slice(0, 14);
-  for (let s = 1; s <= 6; s++) {
+  for (let s = 1; s <= tab.stringCount; s++) {
     let dots = '';
     sample.forEach((st, i) => {
       if (st.notes && st.notes[String(s)] !== undefined) {
@@ -177,6 +215,7 @@ function openProject(id) {
   currentTabId = p.tabs[0].id;
   cursorPos = getTab().steps.length;
   chordAnchor = -1;
+  selected = null;
   undoStack = []; redoStack = [];
   showView('editor');
   renderEditor();
@@ -197,6 +236,7 @@ function renderEditor() {
   if (document.activeElement !== $('tab-desc')) $('tab-desc').value = t.description || '';
   $('tab-desc-count').textContent = (t.description || '').length;
   $('setting-wrap').value = t.wrap || 28;
+  if (document.activeElement !== $('setting-strings')) $('setting-strings').value = t.stringCount || 6;
   cursorPos = Math.max(0, Math.min(cursorPos, t.steps.length));
   renderStringPicker();
   renderStaff();
@@ -210,11 +250,12 @@ function renderStringPicker() {
   const t = getTab();
   const wrap = $('string-picker');
   wrap.innerHTML = '';
-  for (let s = 1; s <= 6; s++) {
+  for (let s = 1; s <= t.stringCount; s++) {
+    const lab = strLabel(t, s);
     const b = document.createElement('button');
     b.className = 'sp-btn' + (t.activeString === s ? ' active' : '');
-    b.innerHTML = `${STRING_LABELS[s]}<small>${s} · ${STRING_NAMES[s]}</small>`;
-    b.title = `String ${s} (${STRING_NAMES[s]}) — Shift+${s} or press ${s === 1 ? 'E twice' : ({ 6: 'E', 5: 'A', 4: 'D', 3: 'G', 2: 'B' })[s]}`;
+    b.innerHTML = `${escapeHtml(lab)}<small>${s}</small>`;
+    b.title = `String ${s} (${lab}) — Shift+${s} or press ${lab[0].toUpperCase()}`;
     b.onclick = () => { pushUndo(); t.activeString = s; lastDigitTime = 0; touch(); renderEditor(); $('staff-scroll').focus(); };
     wrap.appendChild(b);
   }
@@ -225,15 +266,22 @@ function renderStaff() {
   const staff = $('staff');
   staff.innerHTML = '';
   $('staff-empty').classList.toggle('hidden', t.steps.length > 0);
-  for (let s = 1; s <= 6; s++) {
+  for (let s = 1; s <= t.stringCount; s++) {
     const row = document.createElement('div');
     row.className = 'srow' + (t.activeString === s ? ' active' : '');
     const lab = document.createElement('div');
     lab.className = 'slabel';
-    lab.innerHTML = `<span>${STRING_LABELS[s]}</span><span class="snum">${s}</span>`;
-    lab.title = `Select string ${s} (Shift+${s})`;
+    const labText = document.createElement('span');
+    labText.textContent = strLabel(t, s);
+    const labNum = document.createElement('span');
+    labNum.className = 'snum';
+    labNum.textContent = s;
+    lab.appendChild(labText);
+    lab.appendChild(labNum);
+    lab.title = `String ${s} (${strLabel(t, s)}) — click to select (Shift+${s}), right-click to rename`;
     lab.style.cursor = 'pointer';
     lab.onclick = () => { pushUndo(); t.activeString = s; lastDigitTime = 0; touch(); renderEditor(); };
+    lab.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); renameString(s); };
     row.appendChild(lab);
     const cells = document.createElement('div');
     cells.className = 'scells';
@@ -245,10 +293,24 @@ function renderStaff() {
       const fret = st.notes ? st.notes[String(s)] : undefined;
       if (fret !== undefined && fret !== null && fret !== '') {
         const n = document.createElement('span');
-        n.className = 'note';
+        n.className = 'note' + (selected && selected.step === idx && selected.string === s ? ' selected' : '');
         n.textContent = fret;
-        n.title = `String ${s}, step ${idx + 1}: fret ${fret} — click to delete`;
-        n.onclick = (e) => { e.stopPropagation(); deleteSpecificNote(idx, s); };
+        n.title = `String ${s}, step ${idx + 1}: fret ${fret} — click to edit, right-click to delete`;
+        n.onclick = (e) => {
+          e.stopPropagation();
+          // Clicking a note selects it for in-place editing instead of
+          // deleting it. With Ctrl/Alt held (or chord latch on) the click
+          // additionally targets this column, so the next chord digits
+          // stack into it rather than opening a new column.
+          selected = { step: idx, string: s };
+          t.activeString = s;
+          cursorPos = idx + 1;
+          if (e.ctrlKey || e.altKey || chordLatch) chordAnchor = idx;
+          lastDigitTime = 0;
+          renderEditor();
+          $('staff-scroll').focus();
+        };
+        n.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); deleteSpecificNote(idx, s); };
         c.appendChild(n);
       } else {
         const d = document.createElement('span');
@@ -257,8 +319,21 @@ function renderStaff() {
         c.appendChild(d);
       }
       if (idx + 1 === cursorPos) c.classList.add('cursor-after');
-      c.title = `Step ${idx + 1}, string ${s} — click to move cursor here`;
-      c.onclick = () => { cursorPos = idx + 1; chordAnchor = -1; lastDigitTime = 0; renderStaff(); scrollCursorIntoView(); $('staff-scroll').focus(); };
+      c.title = `Step ${idx + 1}, string ${s} — click to move cursor here (Ctrl+click targets this column for chord stacking)`;
+      c.onclick = (e) => {
+        cursorPos = idx + 1;
+        // Ctrl+click (or click while the chord latch is on) explicitly
+        // targets this existing column: the next chord digits stack into
+        // it instead of opening a new column. A plain click just moves
+        // the cursor and closes any open chord.
+        if (e.ctrlKey || e.altKey || chordLatch) chordAnchor = idx;
+        else chordAnchor = -1;
+        selected = null;
+        lastDigitTime = 0;
+        renderStaff();
+        scrollCursorIntoView();
+        $('staff-scroll').focus();
+      };
       cells.appendChild(c);
     });
     // end cursor slot
@@ -266,7 +341,7 @@ function renderStaff() {
     end.className = 'cell' + (cursorPos === t.steps.length ? ' cursor-after' : '');
     end.innerHTML = '<span class="dash" style="opacity:.35">·</span>';
     end.title = 'End — click to move cursor to end';
-    end.onclick = () => { cursorPos = t.steps.length; chordAnchor = -1; renderStaff(); $('staff-scroll').focus(); };
+    end.onclick = () => { cursorPos = t.steps.length; chordAnchor = -1; selected = null; renderStaff(); $('staff-scroll').focus(); };
     // For empty tab the end slot doubles as the cursor
     if (!t.steps.length) end.classList.add('cursor-after');
     // cursor at 0 (before first)
@@ -275,7 +350,7 @@ function renderStaff() {
       start.className = 'cell cursor-after';
       start.style.width = '8px';
       start.title = 'Start';
-      start.onclick = () => { cursorPos = 0; chordAnchor = -1; renderStaff(); };
+      start.onclick = () => { cursorPos = 0; chordAnchor = -1; selected = null; renderStaff(); };
       cells.prepend(start);
     }
     cells.appendChild(end);
@@ -294,7 +369,7 @@ function renderTabList() {
     el.className = 'tab-item' + (t.id === currentTabId ? ' selected' : '');
     el.innerHTML = `<span class="grip">⋮⋮</span><span class="tname"></span><span class="cnt">${st.notes} notes · ${st.steps} steps</span>`;
     el.querySelector('.tname').textContent = t.name;
-    el.onclick = () => { currentTabId = t.id; cursorPos = t.steps.length; chordAnchor = -1; undoStack = []; redoStack = []; lastDigitTime = 0; renderEditor(); };
+    el.onclick = () => { currentTabId = t.id; cursorPos = t.steps.length; chordAnchor = -1; selected = null; undoStack = []; redoStack = []; lastDigitTime = 0; renderEditor(); };
     list.appendChild(el);
   });
 }
@@ -327,24 +402,28 @@ function fretMax() {
 function insertDigit(digit, asChord) {
   const t = getTab();
   if (!t) return;
-  pushUndo();
+  ensureTabStrings(t);
   const d = parseInt(digit, 10);
   const now = Date.now();
   const s = String(t.activeString);
 
   if (asChord) {
-    // One modifier-hold (or latch session) = ONE column. The first chord digit
-    // opens a fresh column at the cursor; further digits stack into it until
-    // the modifier is released / the latch is toggled off. This never touches
-    // previously written notes.
-    let idx = chordAnchor;
-    if (idx < 0 || !t.steps[idx]) {
+    // Chord digits stack into ONE column. Priority: (1) the clicked/selected
+    // column, so a previously written chord can be extended after the fact;
+    // (2) the column opened by the current modifier-hold / latch session;
+    // (3) a fresh column at the cursor. Previously written notes are never
+    // touched except by explicitly stacking into their column.
+    pushUndo();
+    let idx = -1;
+    if (selected && t.steps[selected.step]) idx = selected.step;
+    else if (chordAnchor >= 0 && t.steps[chordAnchor]) idx = chordAnchor;
+    if (idx < 0) {
       const st = { notes: {}, order: [] };
       t.steps.splice(cursorPos, 0, st);
       idx = cursorPos;
       cursorPos++;
-      chordAnchor = idx;
     }
+    chordAnchor = idx;
     const st = t.steps[idx];
     st.notes = st.notes || {}; st.order = st.order || [];
     const prev = st.notes[s];
@@ -356,8 +435,34 @@ function insertDigit(digit, asChord) {
       if (!st.order.includes(t.activeString)) st.order.push(t.activeString);
       st.notes[s] = d;
     }
+    // Keep the new note selected so further edits stay in this column.
+    selected = { step: idx, string: t.activeString };
     lastDigitTime = now; lastDigitStep = idx; lastDigitString = t.activeString;
   } else {
+    // A plain digit replaces the selected note in place (fast double-press
+    // still merges into two-digit frets). Anything else writes a new column.
+    if (selected && t.steps[selected.step] && t.activeString === selected.string &&
+        t.steps[selected.step].notes && t.steps[selected.step].notes[String(selected.string)] !== undefined) {
+      pushUndo();
+      const idx = selected.step;
+      const sel = String(selected.string);
+      const prev = t.steps[idx].notes[sel];
+      if (now - lastDigitTime < 800 && lastDigitStep === idx && lastDigitString === selected.string && String(prev).length === 1) {
+        const merged = parseInt(String(prev) + digit, 10);
+        if (merged <= fretMax()) {
+          t.steps[idx].notes[sel] = merged;
+          lastDigitTime = now;
+          touch(); renderEditor(); scrollCursorIntoView();
+          return;
+        }
+      }
+      t.steps[idx].notes[sel] = d;
+      lastDigitTime = now; lastDigitStep = idx; lastDigitString = selected.string;
+      touch(); renderEditor(); scrollCursorIntoView();
+      return;
+    }
+    if (selected) selected = null;
+    pushUndo();
     // merge fast double-press into previous step (for 10..24)?
     const prevIdx = cursorPos - 1;
     const prevSt = t.steps[prevIdx];
@@ -389,12 +494,21 @@ function insertGap() {
   t.steps.splice(cursorPos, 0, { notes: {}, order: [] });
   cursorPos++;
   chordAnchor = -1;
+  selected = null;
   lastDigitTime = 0;
   touch(); renderEditor(); scrollCursorIntoView();
 }
 function deleteLastNote() {
   const t = getTab();
-  if (!t || cursorPos <= 0 || !t.steps.length) return;
+  if (!t) return;
+  // If a note is selected (clicked), delete exactly that note.
+  if (selected && t.steps[selected.step]) {
+    const sel = selected;
+    selected = null;
+    deleteSpecificNote(sel.step, sel.string);
+    return;
+  }
+  if (cursorPos <= 0 || !t.steps.length) return;
   pushUndo();
   const idx = cursorPos - 1;
   const st = t.steps[idx];
@@ -417,6 +531,7 @@ function deleteLastNote() {
 function deleteSpecificNote(stepIdx, stringNo) {
   const t = getTab();
   if (!t) return;
+  if (selected && selected.step === stepIdx && selected.string === stringNo) selected = null;
   pushUndo();
   const st = t.steps[stepIdx];
   if (st && st.notes) {
@@ -431,6 +546,35 @@ function deleteSpecificNote(stepIdx, stringNo) {
   }
   lastDigitTime = 0;
   touch(); renderEditor();
+}
+
+function setStringCount(n) {
+  const t = getTab();
+  if (!t) return;
+  n = Math.max(MIN_STRINGS, Math.min(MAX_STRINGS, parseInt(n, 10) || 6));
+  if (n === t.stringCount) return;
+  pushUndo();
+  t.stringCount = n;
+  ensureTabStrings(t);
+  selected = null;
+  chordAnchor = -1;
+  lastDigitTime = 0;
+  touch(); renderEditor();
+  $('staff-scroll').focus();
+}
+
+function renameString(stringNo) {
+  const t = getTab();
+  if (!t) return;
+  openPrompt(`Rename string ${stringNo} (tuning label)`, strLabel(t, stringNo), (val) => {
+    if (val === null) { $('staff-scroll').focus(); return; }
+    const clean = String(val).trim().slice(0, 3) || strLabel(t, stringNo);
+    if (clean === strLabel(t, stringNo)) { $('staff-scroll').focus(); return; }
+    pushUndo();
+    t.stringLabels[stringNo - 1] = clean;
+    touch(); renderEditor();
+    $('staff-scroll').focus();
+  });
 }
 
 /* ---------- project / tab actions ---------- */
@@ -498,12 +642,14 @@ function openHelp() {
   <ul>
     <li><kbd>0</kbd>…<kbd>9</kbd> — write a note on the active string (new column each time)</li>
     <li>Type fast twice (e.g. <kbd>1</kbd> then <kbd>2</kbd>) → fret <b>12</b> (up to max)</li>
-    <li><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>6</kbd> — choose string (highlighted row). Strings: 1 = high e (top), 6 = low E (bottom). Faster: just press the string's tuning letter <kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>G</kbd> <kbd>B</kbd> — single <kbd>E</kbd> is the low E, double-press <kbd>E</kbd> for the high e</li>
-    <li>Hold <kbd>Ctrl</kbd> (or <kbd>Alt</kbd> if your browser steals <kbd>Ctrl</kbd>+number to switch tabs) — everything you type while it is held goes into <b>one new column</b> without touching previous notes. While holding it, <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>6</kbd> still switches strings, so: hold <kbd>Ctrl</kbd> → <kbd>5</kbd> → <kbd>Shift</kbd>+<kbd>2</kbd> → <kbd>7</kbd> writes a chord with fret 5 on string 1 and fret 7 on string 2. Release <kbd>Ctrl</kbd> to finish the chord. Two-digit frets (<kbd>1</kbd> then <kbd>2</kbd> fast = <b>12</b>) work inside chords too. The <i>Chord</i> button latches the same: toggle on, type the chord, toggle off</li>
-    <li><kbd>⌫</kbd> / <kbd>⏎</kbd> — delete last note · <kbd>Space</kbd> — silent gap · <kbd>↑</kbd><kbd>↓</kbd> change string, <kbd>←</kbd><kbd>→</kbd> move cursor</li>
+    <li><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> — choose string (highlighted row). Faster: just press the string's tuning letter (<kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>G</kbd> <kbd>B</kbd> on a standard 6-string) — if two strings share a letter, a single press picks the lower one, a fast double-press picks the upper one</li>
+    <li>Hold <kbd>Ctrl</kbd> (or <kbd>Alt</kbd> if your browser steals <kbd>Ctrl</kbd>+number to switch tabs) — everything you type while it is held goes into <b>one new column</b> without touching previous notes. While holding it, <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> still switches strings, so: hold <kbd>Ctrl</kbd> → <kbd>5</kbd> → <kbd>Shift</kbd>+<kbd>2</kbd> → <kbd>7</kbd> writes a chord with fret 5 on string 1 and fret 7 on string 2. Release <kbd>Ctrl</kbd> to finish the chord. Two-digit frets (<kbd>1</kbd> then <kbd>2</kbd> fast = <b>12</b>) work inside chords too. The <i>Chord</i> button latches the same: toggle on, type the chord, toggle off</li>
+    <li><b>Editing a chord afterwards:</b> click any note of the chord to select it (orange) — typing a number replaces it in place. To <b>add</b> a string to that chord, keep the note selected, pick the string, then hold <kbd>Ctrl</kbd> (or toggle <i>Chord</i>) and type the fret — it stacks into the same column instead of opening a new one. <kbd>Ctrl</kbd>+click on an empty cell targets that column directly. <kbd>↑</kbd><kbd>↓</kbd> moves the selection inside the chord</li>
+    <li><kbd>⌫</kbd> / <kbd>⏎</kbd> — delete the selected note, else the last note · right-click a note also deletes it · <kbd>Space</kbd> — silent gap · <kbd>↑</kbd><kbd>↓</kbd> change string, <kbd>←</kbd><kbd>→</kbd> move cursor, <kbd>Esc</kbd> leaves edit mode</li>
+    <li><b>Strings:</b> set the count (4–8) under Settings on the right. Right-click a string label on the left of the fretboard to rename its tuning (e.g. Drop-D: rename the bottom string to <kbd>D</kbd>)</li>
     <li>Or use the UI: string buttons, number pad, + Gap, Delete</li>
   </ul>
-  <p><b>Text export:</b> 6 lines with <kbd>e B G D A E</kbd> + dashes, numbers in regular steps — the classic guitarist text-tab. Use ⎙ TXT.</p>`);
+  <p><b>Text export:</b> one line per string with its tuning label + dashes, numbers in regular steps — the classic guitarist text-tab. Use ⎙ TXT.</p>`);
 }
 
 /* ---------- wiring ---------- */
@@ -539,7 +685,7 @@ function init() {
       try {
         const obj = JSON.parse(r.result);
         const arr = Array.isArray(obj) ? obj : [obj];
-        arr.forEach((p) => { if (p && p.name) { p.id = p.id || uid(); projects.unshift(p); } });
+        arr.forEach((p) => { if (p && p.name) { p.id = p.id || uid(); (p.tabs || []).forEach(ensureTabStrings); projects.unshift(p); } });
         saveProjects(); renderDashboard();
       } catch { alert('Invalid JSON file'); }
     };
@@ -556,6 +702,7 @@ function init() {
     redoStack.push(JSON.stringify({ steps: t.steps, cursor: cursorPos }));
     restoreSnapshot(undoStack.pop());
     chordAnchor = -1;
+    selected = null;
     touch(); renderEditor();
   };
   $('btn-redo').onclick = () => {
@@ -564,6 +711,7 @@ function init() {
     undoStack.push(JSON.stringify({ steps: t.steps, cursor: cursorPos }));
     restoreSnapshot(redoStack.pop());
     chordAnchor = -1;
+    selected = null;
     touch(); renderEditor();
   };
   $('btn-new-tab').onclick = () => {
@@ -571,7 +719,7 @@ function init() {
     pushUndo();
     const t = newTab(`Tab ${p.tabs.length + 1}`);
     p.tabs.push(t);
-    currentTabId = t.id; cursorPos = 0; chordAnchor = -1; undoStack = []; redoStack = [];
+    currentTabId = t.id; cursorPos = 0; chordAnchor = -1; selected = null; undoStack = []; redoStack = [];
     touch(); renderEditor(); $('tab-name').focus(); $('tab-name').select();
   };
   $('btn-delete-tab').onclick = () => {
@@ -581,6 +729,7 @@ function init() {
       p.tabs = p.tabs.filter((t) => t.id !== currentTabId);
       currentTabId = p.tabs[0].id; cursorPos = getTab().steps.length;
       chordAnchor = -1;
+      selected = null;
       undoStack = []; redoStack = [];
       touch(); renderEditor();
     });
@@ -598,7 +747,7 @@ function init() {
   };
   $('btn-chord').onclick = () => {
     chordLatch = !chordLatch;
-    if (!chordLatch) chordAnchor = -1; // unlatching closes the open chord column
+    if (!chordLatch) { chordAnchor = -1; selected = null; } // unlatching closes the open chord column and leaves edit mode
     $('btn-chord').classList.toggle('active', chordLatch);
     document.querySelectorAll('.np-btn').forEach((b) => { b.title = chordLatch ? `Add ${b.textContent} to the open chord column` : `Write ${b.textContent} as new note`; });
     $('staff-scroll').focus();
@@ -625,6 +774,9 @@ function init() {
     e.target.value = t.wrap;
     touch(); renderEditor();
   });
+  $('setting-strings').addEventListener('change', (e) => {
+    setStringCount(e.target.value);
+  });
 
   $('btn-export-txt').onclick = () => {
     const t = getTab();
@@ -643,12 +795,21 @@ function init() {
   $('modal-close').onclick = closeModal;
   $('modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'modal-backdrop') closeModal(); });
 
-  /* releasing Ctrl/Alt closes the open chord column: the next chord
-     digit starts a fresh column instead of stacking onto the old one.
-     (Shift release must NOT close it — Shift+1…6 switches strings mid-chord.) */
+  /* releasing Ctrl/Alt closes the open chord column and leaves edit mode:
+     the next chord digit starts a fresh column instead of stacking onto the
+     old one, and the next plain digit writes a new note instead of
+     replacing the selected one.
+     (Shift release must NOT close it — Shift+1…8 switches strings mid-chord.) */
   document.addEventListener('keyup', (e) => {
-    if (e.key === 'Control' || e.key === 'Alt') chordAnchor = -1;
+    if (e.key === 'Control' || e.key === 'Alt') {
+      chordAnchor = -1;
+      if (selected) { selected = null; renderStaff(); }
+    }
   });
+
+  // Right-click on empty staff space does nothing (no browser menu).
+  // Notes and string labels have their own context-menu actions.
+  $('staff').addEventListener('contextmenu', (e) => { e.preventDefault(); });
 
   /* global fast-entry keyboard */
   document.addEventListener('keydown', (e) => {
@@ -665,34 +826,43 @@ function init() {
     const t = getTab();
     if (!t) return;
 
-    // Shift + 1..6 → string select (use e.code since shifted key differs).
+    // Shift + 1..8 → string select (use e.code since shifted key differs).
     // NOTE: Ctrl may be held at the same time (chord workflow: hold Ctrl,
-    // Shift+1..6 to pick the string, then digit to stack) — so don't exclude it.
-    if (e.shiftKey && !e.metaKey && /^Digit[1-6]$/.test(e.code)) {
-      e.preventDefault();
-      t.activeString = parseInt(e.code.slice(5), 10);
-      lastDigitTime = 0;
-      touch(); renderEditor();
-      return;
-    }
-    // Letter shortcut: press the string's tuning note to select it
-    // (E A D G B — case-insensitive, no modifiers needed).
-    // Low E and high e share a letter: single E = low E (6),
-    // double-press E = high e (1).
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key && /^[eadgb]$/i.test(e.key)) {
-      e.preventDefault();
-      const letter = e.key.toLowerCase();
-      const now = Date.now();
-      if (letter === 'e' && lastLetterKey === 'e' && now - lastLetterTime < 600) {
-        t.activeString = 1;
-        lastLetterTime = 0; lastLetterKey = '';
-      } else {
-        t.activeString = { e: 6, a: 5, d: 4, g: 3, b: 2 }[letter];
-        lastLetterTime = now; lastLetterKey = letter;
+    // Shift+1…8 to pick the string, then digit to stack) — so don't exclude it.
+    if (e.shiftKey && !e.metaKey && /^Digit[1-8]$/.test(e.code)) {
+      const n = parseInt(e.code.slice(5), 10);
+      if (n >= 1 && n <= t.stringCount) {
+        e.preventDefault();
+        t.activeString = n;
+        lastDigitTime = 0;
+        touch(); renderEditor();
+        return;
       }
-      lastDigitTime = 0;
-      touch(); renderEditor();
-      return;
+    }
+    // Letter shortcut: press a string's tuning label to select it
+    // (case-insensitive, first letter of the label, no modifiers needed).
+    // Labels sharing a letter (e.g. high e / low E): single press picks
+    // the lowest string, double-press picks the highest one.
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key && /^[a-g]$/i.test(e.key)) {
+      const letter = e.key.toLowerCase();
+      const matches = [];
+      for (let s = 1; s <= t.stringCount; s++) {
+        if (String(strLabel(t, s)).toLowerCase()[0] === letter) matches.push(s);
+      }
+      if (matches.length) {
+        e.preventDefault();
+        const now = Date.now();
+        if (matches.length > 1 && lastLetterKey === letter && now - lastLetterTime < 600) {
+          t.activeString = matches[0];
+          lastLetterTime = 0; lastLetterKey = '';
+        } else {
+          t.activeString = matches[matches.length - 1];
+          lastLetterTime = now; lastLetterKey = letter;
+        }
+        lastDigitTime = 0;
+        touch(); renderEditor();
+        return;
+      }
     }
     // Digits: plain = new column, Ctrl/Alt/Chord-latch = stack into current column.
     // Use e.code as fallback because Ctrl/Alt/Shift can alter e.key ('!' etc.).
@@ -710,10 +880,33 @@ function init() {
     if (e.key === 'Backspace' || e.key === 'Enter') { e.preventDefault(); deleteLastNote(); return; }
     if (e.key === 'Delete') { e.preventDefault(); deleteLastNote(); return; }
     if (e.key === ' ') { e.preventDefault(); insertGap(); return; }
-    if (e.key === 'ArrowUp') { e.preventDefault(); t.activeString = Math.max(1, t.activeString - 1); touch(); renderEditor(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); t.activeString = Math.min(6, t.activeString + 1); touch(); renderEditor(); return; }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); cursorPos = Math.max(0, cursorPos - 1); chordAnchor = -1; lastDigitTime = 0; renderStaff(); return; }
-    if (e.key === 'ArrowRight') { e.preventDefault(); cursorPos = Math.min(t.steps.length, cursorPos + 1); chordAnchor = -1; lastDigitTime = 0; renderStaff(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); selected = null; chordAnchor = -1; renderStaff(); return; }
+    // Up/Down moves the note selection inside its column when a note is
+    // selected, otherwise it just changes the active string row.
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (selected && t.steps[selected.step]) {
+        selected.string = Math.max(1, selected.string - 1);
+        t.activeString = selected.string;
+        cursorPos = selected.step + 1;
+      } else {
+        t.activeString = Math.max(1, t.activeString - 1);
+      }
+      lastDigitTime = 0; touch(); renderEditor(); return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (selected && t.steps[selected.step]) {
+        selected.string = Math.min(t.stringCount, selected.string + 1);
+        t.activeString = selected.string;
+        cursorPos = selected.step + 1;
+      } else {
+        t.activeString = Math.min(t.stringCount, t.activeString + 1);
+      }
+      lastDigitTime = 0; touch(); renderEditor(); return;
+    }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); cursorPos = Math.max(0, cursorPos - 1); chordAnchor = -1; selected = null; lastDigitTime = 0; renderStaff(); return; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); cursorPos = Math.min(t.steps.length, cursorPos + 1); chordAnchor = -1; selected = null; lastDigitTime = 0; renderStaff(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); $('btn-undo').click(); return; }
     if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); $('btn-redo').click(); return; }
   });
