@@ -145,6 +145,9 @@ function tabToAscii(tab, wrapAt) {
 function projectToAscii(proj) {
   return proj.tabs.map((t) => `### ${t.name}\n${t.description ? '(' + t.description + ')\n' : ''}${tabToAscii(t, t.wrap || 28)}`).join('\n\n');
 }
+function projectToRtf(proj) {
+  return rtfDoc(proj.tabs.map((t) => `### ${t.name}\n${t.description ? '(' + t.description + ')\n' : ''}${tabToAscii(t, t.wrap || 28)}`));
+}
 function tabStats(tab) {
   let notes = 0;
   (tab.steps || []).forEach((s) => { notes += Object.keys(s.notes || {}).length; });
@@ -563,6 +566,35 @@ function setStringCount(n) {
   $('staff-scroll').focus();
 }
 
+/* Select the written note right after the insertion cursor on the active
+   string (or the nearest string in that column that has a note), so that
+   every written note is reachable — and editable — from the keyboard.
+   Typing a digit then replaces the selected note in place; Esc drops the
+   selection so typing inserts a new column again. */
+function selectNoteAtCursor() {
+  const t = getTab();
+  selected = null;
+  if (!t) return;
+  const st = t.steps[cursorPos];
+  if (!st || !st.notes) return;
+  const own = st.notes[String(t.activeString)];
+  if (own !== undefined) {
+    selected = { step: cursorPos, string: t.activeString };
+    return;
+  }
+  let best = -1, bestDist = 1e9;
+  for (const k of Object.keys(st.notes)) {
+    const s = parseInt(k, 10);
+    if (isNaN(s) || s < 1 || s > t.stringCount) continue;
+    const d = Math.abs(s - t.activeString);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  if (best > 0) {
+    selected = { step: cursorPos, string: best };
+    t.activeString = best;
+  }
+}
+
 function renameString(stringNo) {
   const t = getTab();
   if (!t) return;
@@ -594,14 +626,55 @@ function deleteProject(id) {
 function exportProject(id) {
   const p = projects.find((x) => x.id === id);
   const txt = projectToAscii(p);
-  openModal(`${p.name} — text export`, `<pre>${escapeHtml(txt)}</pre>
+  openModal(`${p.name} — text export`, `<p class="muted" style="font-size:12px">Tip for Word/LibreOffice: use <b>Copy text</b> (keeps monospace formatting) or <b>Download .rtf</b> and open it directly. If long lines wrap in the document, lower “Steps per line”.</p><pre>${escapeHtml(txt)}</pre>
     <div class="modal-actions" style="justify-content:flex-start;padding:0">
     <button class="btn btn-primary" id="m-copy">Copy text</button>
     <button class="btn btn-ghost" id="m-dl">Download .txt</button>
+    <button class="btn btn-ghost" id="m-rtf">Download .rtf</button>
     <button class="btn btn-ghost" id="m-json">Download .json</button></div>`);
-  $('m-copy').onclick = () => navigator.clipboard.writeText(txt);
+  $('m-copy').onclick = (e) => copyTabText(txt, e.target);
   $('m-dl').onclick = () => download(`${p.name}.txt`, txt, 'text/plain');
+  $('m-rtf').onclick = () => download(`${p.name}.rtf`, projectToRtf(p), 'application/rtf');
   $('m-json').onclick = () => download(`${p.name}.tabtool.json`, JSON.stringify(p, null, 2), 'application/json');
+}
+/* Copy tab text so it pastes cleanly into Word/LibreOffice: carry a
+   text/html flavor (monospace <pre>, which Writer maps to a preformatted
+   block) alongside the plain text. Falls back to plain copy. */
+async function copyTabText(txt, btn) {
+  const html = '<pre style="font-family: monospace; white-space: pre;">' + escapeHtml(txt) + '</pre>';
+  try {
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/plain': new Blob([txt], { type: 'text/plain' }),
+        'text/html': new Blob([html], { type: 'text/html' }),
+      })]);
+    } else {
+      await navigator.clipboard.writeText(txt);
+    }
+  } catch (e) {
+    await navigator.clipboard.writeText(txt);
+  }
+  if (btn) {
+    const old = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  }
+}
+/* RTF export: opens directly in LibreOffice/Word with Courier intact,
+   so no paste step (and no font fixing) is needed at all. */
+function rtfEscapeBlock(ascii) {
+  return ascii
+    .replace(/\\/g, '\\\\')
+    .replace(/{/g, '\\{').replace(/}/g, '\\}')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, (c) => '\\u' + c.charCodeAt(0) + '?')
+    .split('\n').join('\\par\n');
+}
+function rtfDoc(blocks) {
+  return '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Courier New;}}\\f0\\fs20 ' + blocks.map(rtfEscapeBlock).join('\\par\\par\n') + '\\par}';
+}
+function tabToRtf(tab, wrapAt) {
+  ensureTabStrings(tab);
+  return rtfDoc([tabToAscii(tab, wrapAt)]);
 }
 function download(filename, text, mime) {
   const a = document.createElement('a');
@@ -645,11 +718,12 @@ function openHelp() {
     <li><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> — choose string (highlighted row). Faster: just press the string's tuning letter (<kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>G</kbd> <kbd>B</kbd> on a standard 6-string) — if two strings share a letter, a single press picks the lower one, a fast double-press picks the upper one</li>
     <li>Hold <kbd>Ctrl</kbd> (or <kbd>Alt</kbd> if your browser steals <kbd>Ctrl</kbd>+number to switch tabs) — everything you type while it is held goes into <b>one new column</b> without touching previous notes. While holding it, <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> still switches strings, so: hold <kbd>Ctrl</kbd> → <kbd>5</kbd> → <kbd>Shift</kbd>+<kbd>2</kbd> → <kbd>7</kbd> writes a chord with fret 5 on string 1 and fret 7 on string 2. Release <kbd>Ctrl</kbd> to finish the chord. Two-digit frets (<kbd>1</kbd> then <kbd>2</kbd> fast = <b>12</b>) work inside chords too. The <i>Chord</i> button latches the same: toggle on, type the chord, toggle off</li>
     <li><b>Editing a chord afterwards:</b> click any note of the chord to select it (orange) — typing a number replaces it in place. To <b>add</b> a string to that chord, keep the note selected, pick the string, then hold <kbd>Ctrl</kbd> (or toggle <i>Chord</i>) and type the fret — it stacks into the same column instead of opening a new one. <kbd>Ctrl</kbd>+click on an empty cell targets that column directly. <kbd>↑</kbd><kbd>↓</kbd> moves the selection inside the chord</li>
-    <li><kbd>⌫</kbd> / <kbd>⏎</kbd> — delete the selected note, else the last note · right-click a note also deletes it · <kbd>Space</kbd> — silent gap · <kbd>↑</kbd><kbd>↓</kbd> change string, <kbd>←</kbd><kbd>→</kbd> move cursor, <kbd>Esc</kbd> leaves edit mode</li>
+    <li><b>Reaching any written note from the keyboard:</b> <kbd>←</kbd>/<kbd>→</kbd> steps through the columns and highlights the note it lands on (nearest string with a note) — typing a number replaces the highlighted note. <kbd>↑</kbd><kbd>↓</kbd> moves the highlight inside a chord. <kbd>Esc</kbd> drops the highlight; typing then inserts a new column again. So: write <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>, press <kbd>←</kbd> to highlight the <kbd>3</kbd>, type a new fret to fix it, <kbd>Esc</kbd> to carry on writing</li>
+    <li><kbd>⌫</kbd> / <kbd>⏎</kbd> — delete the selected note, else the last note · right-click a note also deletes it · <kbd>Space</kbd> — silent gap · <kbd>↑</kbd><kbd>↓</kbd> change string, <kbd>Esc</kbd> leaves edit mode</li>
     <li><b>Strings:</b> set the count (4–8) under Settings on the right. Right-click a string label on the left of the fretboard to rename its tuning (e.g. Drop-D: rename the bottom string to <kbd>D</kbd>)</li>
     <li>Or use the UI: string buttons, number pad, + Gap, Delete</li>
   </ul>
-  <p><b>Text export:</b> one line per string with its tuning label + dashes, numbers in regular steps — the classic guitarist text-tab. Use ⎙ TXT.</p>`);
+  <p><b>Text export:</b> one line per string with its tuning label + dashes, numbers in regular steps — the classic guitarist text-tab. Use ⎙ TXT. For Word/LibreOffice use the <b>Copy</b> button (preserves monospace) or <b>Download .rtf</b>; if lines wrap in the document, lower “Steps per line”.</p>`);
 }
 
 /* ---------- wiring ---------- */
@@ -781,11 +855,13 @@ function init() {
   $('btn-export-txt').onclick = () => {
     const t = getTab();
     const txt = tabToAscii(t, t.wrap || 28);
-    openModal(`${t.name} — text export`, `<pre>${escapeHtml(txt)}</pre>
+    openModal(`${t.name} — text export`, `<p class="muted" style="font-size:12px">Tip for Word/LibreOffice: use <b>Copy text</b> (keeps monospace formatting) or <b>Download .rtf</b> and open it directly. If long lines wrap in the document, lower “Steps per line”.</p><pre>${escapeHtml(txt)}</pre>
       <div style="display:flex;gap:8px"><button class="btn btn-primary" id="m-copy">Copy text</button>
-      <button class="btn btn-ghost" id="m-dl">Download .txt</button></div>`);
-    $('m-copy').onclick = () => navigator.clipboard.writeText(txt);
+      <button class="btn btn-ghost" id="m-dl">Download .txt</button>
+      <button class="btn btn-ghost" id="m-rtf">Download .rtf</button></div>`);
+    $('m-copy').onclick = (e) => copyTabText(txt, e.target);
     $('m-dl').onclick = () => download(`${t.name}.txt`, txt, 'text/plain');
+    $('m-rtf').onclick = () => download(`${t.name}.rtf`, tabToRtf(t, t.wrap || 28), 'application/rtf');
   };
   $('btn-export-json').onclick = () => {
     const p = getProject();
@@ -905,8 +981,12 @@ function init() {
       }
       lastDigitTime = 0; touch(); renderEditor(); return;
     }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); cursorPos = Math.max(0, cursorPos - 1); chordAnchor = -1; selected = null; lastDigitTime = 0; renderStaff(); return; }
-    if (e.key === 'ArrowRight') { e.preventDefault(); cursorPos = Math.min(t.steps.length, cursorPos + 1); chordAnchor = -1; selected = null; lastDigitTime = 0; renderStaff(); return; }
+    // Left/Right steps the insertion cursor AND lands on the written note
+    // there (see selectNoteAtCursor): typing replaces it, Esc + typing
+    // inserts a new column instead. Walking right past the last note (or
+    // onto an empty gap) leaves nothing selected, so appending still works.
+    if (e.key === 'ArrowLeft') { e.preventDefault(); cursorPos = Math.max(0, cursorPos - 1); chordAnchor = -1; lastDigitTime = 0; selectNoteAtCursor(); renderEditor(); scrollCursorIntoView(); return; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); cursorPos = Math.min(t.steps.length, cursorPos + 1); chordAnchor = -1; lastDigitTime = 0; selectNoteAtCursor(); renderEditor(); scrollCursorIntoView(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); $('btn-undo').click(); return; }
     if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); $('btn-redo').click(); return; }
   });
