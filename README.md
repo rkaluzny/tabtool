@@ -75,5 +75,24 @@ A|-------------
 E|-------------
 ```
 
+5. **⎙ PDF** exports **all tabs of the project into one PDF file**. A small
+   options window lets you pick:
+
+   - **Layout**
+     - *Editor view* — the graphical tab, like the live fretboard: strings as
+       lines, frets as numbers in round markers on the line
+     - *Classic text tab* — the plain ASCII tab, exactly what ⎙ TXT writes
+       (always printed in plain black)
+   - **Colors** (only for the editor view)
+     - *Colorful* — round blue note markers, soft grid, colored title band
+     - *Black & white* — grayscale, lines broken around the numbers
+     - *Print optimized* — black on white, no fills, hairline strokes, as
+       little ink as possible
+
+   The PDF is A4 with page numbers in the footer. The same button is
+   available in the dashboard's *Export* dialog. The PDF is written by hand —
+   no external library, no network, works offline and in the packaged
+   Electron app.
+
 - `Steps per line` controls line-wrapping of the text export.
 - Projects persist in `localStorage`; Import / Export All moves `.tabtool.json` files around.
