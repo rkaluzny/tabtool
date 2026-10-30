@@ -1,4 +1,4 @@
-# TabTool 0.1.0
+# TabTool 1.0.0
 
 Quick guitar-tab writer — vanilla JS + HTML/CSS, wrapped with Electron.
 
@@ -6,7 +6,7 @@ Quick guitar-tab writer — vanilla JS + HTML/CSS, wrapped with Electron.
 
 - As a web app: just open `index.html` in a browser.
 - As Electron: `npm install` then `npm start`.
-- Linux builds: `npm run dist` → `dist/TabTool-0.1.0.AppImage` and `dist/tabtool_0.1.0_amd64.deb`.
+- Linux builds: `npm run dist` → `dist/TabTool-1.0.0.AppImage` and `dist/tabtool_1.0.0_amd64.deb`.
 
 ## Build installers
 
@@ -19,8 +19,8 @@ dependencies installed once with `npm install`.
 npm run dist:linux
 ```
 
-Produces `dist/TabTool-0.1.0.AppImage` (run directly, no install needed) and
-`dist/tabtool_0.1.0_amd64.deb` (install with `sudo dpkg -i ...`, adds a
+Produces `dist/TabTool-1.0.0.AppImage` (run directly, no install needed) and
+`dist/tabtool_1.0.0_amd64.deb` (install with `sudo dpkg -i ...`, adds a
 launcher + menu entry). Needs `dpkg-deb`/`fakeroot` for the `.deb`, both
 present on Debian/Ubuntu/Mint.
 
@@ -30,8 +30,8 @@ present on Debian/Ubuntu/Mint.
 npm run dist:win
 ```
 
-Produces `dist/TabTool-0.1.0-setup.exe` (NSIS installer) and
-`dist/TabTool-0.1.0-portable.exe` (no install needed). No Windows machine
+Produces `dist/TabTool-1.0.0-setup.exe` (NSIS installer) and
+`dist/TabTool-1.0.0-portable.exe` (no install needed). No Windows machine
 required — electron-builder downloads its NSIS tools automatically. Without a
 code-signing certificate Windows SmartScreen will warn on first launch; that
 is expected for self-distributed apps.
@@ -42,7 +42,7 @@ is expected for self-distributed apps.
 npm run dist:mac
 ```
 
-Produces `dist/TabTool-0.1.0.dmg` and `dist/TabTool-0.1.0-mac.zip`. Apple
+Produces `dist/TabTool-1.0.0.dmg` and `dist/TabTool-1.0.0-mac.zip`. Apple
 platforms can only be packaged on macOS, so run this on a Mac with Xcode
 command-line tools installed. Without an Apple Developer signature +
 notarization, Gatekeeper will block the app on first launch (right-click →
