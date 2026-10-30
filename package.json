@@ -7,7 +7,7 @@
     "email": "robin.jerome.kaluzny@gmail.com"
   },
   "homepage": "*",
-  "main": "main.js",
+  "main": "js/main.js",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --linux AppImage deb --publish never",
@@ -23,10 +23,9 @@
     "appId": "com.tabtool.app",
     "productName": "TabTool",
     "files": [
-      "index.html",
-      "app.js",
+      "app.html",
       "styles.css",
-      "main.js",
+      "js/**/*",
       "favicon.ico",
       "build/icon.png",
       "build/icon.ico",

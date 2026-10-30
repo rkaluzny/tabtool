@@ -9,10 +9,10 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: '#232323',
     title: 'TabTool 0.1.0',
-    icon: path.join(__dirname, 'build/icon.png'),
+    icon: path.join(__dirname, '..', 'build/icon.png'),
     autoHideMenuBar: true
   });
-  win.loadFile(path.join(__dirname, 'index.html'));
+  win.loadFile(path.join(__dirname, '..', 'app.html'));
 }
 
 app.whenReady().then(() => {

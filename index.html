@@ -3,127 +3,83 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>TabTool 0.1.0</title>
+<title>TabTool — quick guitar tab writer</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico" />
-<link rel="stylesheet" href="styles.css" />
+<style>
+  :root{--bg:#1e1e2e;--card:#2a2a3c;--text:#e6e6f0;--muted:#9a9ab0;--accent:#7c5cff;--accent2:#4ccfee;--border:#3a3a52;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+  header{padding:24px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  .logo{font-size:22px;font-weight:800;letter-spacing:.5px;}
+  .logo span{color:var(--accent2);}
+  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center;}
+  h1{font-size:clamp(36px,6vw,64px);margin-bottom:12px;}
+  .tagline{color:var(--muted);font-size:clamp(16px,2.5vw,22px);max-width:640px;margin-bottom:40px;}
+  .cta{display:inline-block;padding:16px 32px;background:var(--accent);color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:18px;transition:transform .12s,background .12s;}
+  .cta:hover{background:#6a4ae0;transform:translateY(-2px);}
+  .section{width:100%;max-width:960px;margin:48px auto 0;}
+  .section h2{font-size:22px;margin-bottom:16px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:left;}
+  .card h3{margin-bottom:6px;font-size:17px;}
+  .card p{color:var(--muted);font-size:14px;margin-bottom:14px;}
+  .btn{display:inline-block;padding:10px 16px;background:#3a3a52;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;transition:background .12s;}
+  .btn:hover{background:#4a4a66;}
+  .btn.primary{background:var(--accent);}
+  .btn.primary:hover{background:#6a4ae0;}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:#3a3a52;color:var(--muted);margin-left:6px;}
+  footer{padding:24px;text-align:center;color:var(--muted);font-size:13px;}
+  footer a{color:var(--accent2);text-decoration:none;}
+  .hero-art{font-family:monospace;font-size:13px;color:var(--accent2);opacity:.7;margin-bottom:28px;white-space:pre;line-height:1.2;}
+</style>
 </head>
 <body>
-<div id="app">
+<header>
+  <div class="logo">Tab<span>Tool</span></div>
+  <nav>
+    <a class="btn" href="app.html">Open editor</a>
+  </nav>
+</header>
+<main>
+  <div class="hero-art">e|---0---3---5---|
+B|---1---3---5---|
+G|---0---2---5---|
+D|---2---0---0---|
+A|---3-----------|
+E|---------------|</div>
+  <h1>TabTool</h1>
+  <p class="tagline">A fast, keyboard-first guitar tab writer. Type notes, build chords, export to TXT, PDF or JSON — in the browser or as a desktop app.</p>
+  <a class="cta" href="app.html">▶ Try it online</a>
 
-  <!-- ============ DASHBOARD ============ -->
-  <section id="view-dashboard" class="view">
-    <header class="topbar">
-      <h1 class="logo">TabTool</h1>
-      <div class="topbar-actions">
-        <button id="btn-new-project" class="btn btn-primary">+ New Project</button>
-        <button id="btn-help" class="btn btn-ghost">? Help</button>
-        <button id="btn-settings" class="btn btn-ghost">⚙ Settings</button>
-        <button id="btn-import" class="btn btn-ghost">Import</button>
-        <button id="btn-export-all" class="btn btn-ghost">Export All</button>
+  <section class="section">
+    <h2>Download the offline app</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Linux <span class="badge">.deb</span></h3>
+        <p>Debian/Ubuntu package. Installs TabTool to your applications menu.</p>
+        <a class="btn primary" href="#" data-download="linux-deb">Download .deb</a>
       </div>
-    </header>
-    <div class="search-block">
-      <label>Search projects...</label>
-      <input id="search" type="text" placeholder="" autocomplete="off" />
+      <div class="card">
+        <h3>Linux <span class="badge">AppImage</span></h3>
+        <p>Portable single-file build. Make it executable and run — no install needed.</p>
+        <a class="btn primary" href="#" data-download="linux-appimage">Download AppImage</a>
+      </div>
+      <div class="card">
+        <h3>Windows <span class="badge">Setup</span></h3>
+        <p>Standard installer (NSIS). Adds Start-menu shortcut and uninstaller.</p>
+        <a class="btn primary" href="#" data-download="windows-setup">Download Setup</a>
+      </div>
+      <div class="card">
+        <h3>Windows <span class="badge">Portable</span></h3>
+        <p>Single executable, no installation required. Run from any folder or USB drive.</p>
+        <a class="btn primary" href="#" data-download="windows-portable">Download Portable</a>
+      </div>
     </div>
-    <div id="project-list" class="project-list"></div>
+    <p style="color:var(--muted);font-size:13px;margin-top:16px;">Download links are placeholders — binaries will be published soon.</p>
   </section>
-
-  <!-- ============ EDITOR ============ -->
-  <section id="view-editor" class="view hidden">
-    <header class="topbar topbar-editor">
-      <div class="proj-title-wrap">
-        <h2 id="editor-project-name">Untitled</h2>
-        <button id="btn-rename-project" class="btn btn-small btn-ghost">Rename</button>
-      </div>
-      <div class="topbar-actions">
-        <button id="btn-undo" class="btn btn-square btn-primary" title="Undo">↩</button>
-        <button id="btn-redo" class="btn btn-square btn-primary" title="Redo">↪</button>
-        <button id="btn-export-txt" class="btn btn-ghost">⎙ TXT</button>
-        <button id="btn-export-pdf" class="btn btn-ghost" title="Export all tabs of this project into one PDF file">⎙ PDF</button>
-        <button id="btn-export-json" class="btn btn-ghost">JSON</button>
-        <button id="btn-editor-help" class="btn btn-square btn-ghost">?</button>
-        <button id="btn-back" class="btn btn-ghost">← Dashboard</button>
-      </div>
-    </header>
-
-    <div class="editor-layout">
-      <main class="editor-main">
-        <div class="field">
-          <label>Tab / Riff name</label>
-          <input id="tab-name" type="text" maxlength="70" value="New Tab" />
-          <div class="char-count"><span id="tab-name-count">7</span> / 70</div>
-        </div>
-
-        <div class="staff-toolbar">
-          <div class="string-picker" id="string-picker" title="Active string (Shift+number)"></div>
-          <div class="staff-hint" id="staff-hint">String <b id="hint-string">1</b> active — type <b>0–9</b> to write · press the tuning letter for the string · hold <b>Ctrl</b> (<b>Alt</b> works too): everything typed while held lands in <b>one new column</b> — <b>Shift+1…8</b> switches string mid-chord · release to finish · click a note (or <b>←</b>/<b>→</b>) to edit it, <b>Ctrl</b>+type to add a string to its chord · <b>Esc</b> then type inserts new · <b>⌫/⏎</b> deletes · <b>Space</b> = gap</div>
-        </div>
-
-        <div id="staff-scroll" class="staff-scroll" tabindex="0">
-          <div id="staff" class="staff"></div>
-          <div class="staff-empty hidden" id="staff-empty">
-            <p>No notes yet. Select a string, then just start typing numbers.</p>
-            <p class="muted">Tip: <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> picks the string · hold <kbd>Ctrl</kbd> to stack a chord · <kbd>Space</kbd> adds silence.</p>
-          </div>
-        </div>
-
-        <div class="numpad-row">
-          <div class="numpad" id="numpad"></div>
-          <div class="numpad-tools">
-            <button id="btn-chord" class="btn btn-ghost" title="Latch chord mode: everything typed while latched goes into one new column. Toggle off to finish.">Chord (Ctrl)</button>
-            <button id="btn-space" class="btn btn-ghost" title="Insert empty step (Space)">+ Gap</button>
-            <button id="btn-delete-note" class="btn btn-ghost" title="Delete last note (Backspace / Enter)">⌫ Delete</button>
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Description / Notes</label>
-          <textarea id="tab-desc" maxlength="250" rows="2"></textarea>
-          <div class="char-count"><span id="tab-desc-count">0</span> / 250</div>
-        </div>
-
-        <div class="export-preview-block">
-          <label>Text preview <span class="muted">— this is exactly what TXT export writes</span></label>
-          <pre id="ascii-preview" class="ascii-preview"></pre>
-        </div>
-      </main>
-
-      <aside class="editor-side">
-        <h3>Tabs</h3>
-        <button id="btn-new-tab" class="btn btn-primary btn-block">+ New Tab</button>
-        <div class="copy-row">
-          <button id="btn-copy-tab" class="btn btn-ghost btn-block">Copy</button>
-          <button id="btn-paste-tab" class="btn btn-ghost btn-block">Paste</button>
-        </div>
-        <div id="tab-list" class="tab-list"></div>
-        <h3>Settings</h3>
-        <label class="side-label">Strings (4–8)</label>
-        <input id="setting-strings" type="number" min="4" max="8" value="6" />
-        <label class="side-label">Steps per line (text export)</label>
-        <input id="setting-wrap" type="number" min="8" max="64" value="28" />
-        <label class="side-label">Fret max (for 2-digit entry)</label>
-        <input id="setting-fretmax" type="number" min="12" max="30" value="24" />
-        <button id="btn-delete-tab" class="btn btn-danger btn-block">🗑 Delete tab</button>
-        <p class="side-help">Click a cell to move the cursor there.<br/>Click a note (or use ←/→) to edit it in place.<br/>Right-click a note to delete it.<br/>Right-click a string label (left) to rename its tuning.</p>
-      </aside>
-    </div>
-  </section>
-</div>
-
-<!-- modals -->
-<div id="modal-backdrop" class="modal-backdrop hidden">
-  <div class="modal" id="modal-box">
-    <h3 id="modal-title"></h3>
-    <div id="modal-body"></div>
-    <div class="modal-actions">
-      <button id="modal-close" class="btn btn-ghost">Close</button>
-      <button id="modal-ok" class="btn btn-primary hidden">OK</button>
-    </div>
-  </div>
-</div>
-
-<input type="file" id="file-import" accept=".json,application/json" class="hidden" />
-<script src="app.js"></script>
+</main>
+<footer>
+  TabTool 0.1.0 · made by Robin Kaluzny · <a href="app.html">Open the editor</a>
+</footer>
 </body>
 </html>
