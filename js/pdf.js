@@ -3,7 +3,8 @@ function tabToRtf(tab, wrapAt) {
   return rtfDoc([tabToAscii(tab, wrapAt)]);
 }
 
-const PDF_PAGE = { w: 595, h: 842, m: 42 };        // A4 portrait, in points
+const PDF_PAGE = { w: 595, h: 842, m: 42 };        // A4 in points (set per export)
+const PDF_A4 = { portrait: { w: 595, h: 842 }, landscape: { w: 842, h: 595 } };
 const PDF_CHAR_W = 0.6;                            // width of one Courier char (in em)
 const PDF_MIN_SIZE = 7.5;                          // never shrink the tab below this
 
@@ -177,6 +178,7 @@ function renderEditorTab(b, tab, theme) {
   const labelW = 32;
   const avail = PDF_PAGE.w - 2 * M - labelW;
   const steps = tab.steps || [];
+  const wrap = Math.max(4, Math.min(64, parseInt(tab.wrap, 10) || 28));
 
   // column width follows the widest fret number (so 2-digit frets fit) and
   // leaves room so two neighbouring note markers never touch
@@ -185,10 +187,28 @@ function renderEditorTab(b, tab, theme) {
     maxDigits = Math.max(maxDigits, String(st.notes[k]).length);
   }));
   const colW = Math.max(19, maxDigits * PDF_CHAR_W * size + 12);
-  const cols = Math.max(4, Math.floor(avail / colW));
+  // "Steps per line" caps the columns per row (the page width sets the max)
+  let useCols = Math.max(4, Math.min(Math.floor(avail / colW), wrap));
+
+  // avoid orphan rows (a last row with only a handful of notes): if
+  // shrinking the columns by up to 15% pulls the overflow into the rows
+  // above, do that; otherwise spread the steps evenly over the rows.
+  if (steps.length > useCols) {
+    let shrunk = null;
+    for (let s = 1.00; s >= 0.851; s -= 0.01) {
+      const c = Math.max(4, Math.min(Math.floor(avail / (colW * s)), wrap));
+      if (Math.ceil(steps.length / c) < Math.ceil(steps.length / useCols)) {
+        shrunk = c;
+        break;
+      }
+    }
+    if (shrunk) useCols = shrunk;
+    else useCols = Math.max(4, Math.min(useCols, Math.ceil(steps.length / Math.ceil(steps.length / useCols))));
+  }
+  const effColW = avail / useCols;
 
   const chunks = [];
-  for (let i = 0; i < steps.length; i += cols) chunks.push(steps.slice(i, i + cols));
+  for (let i = 0; i < steps.length; i += useCols) chunks.push(steps.slice(i, i + useCols));
   if (!chunks.length) chunks.push([]);
 
   const S = tab.stringCount;
@@ -197,7 +217,7 @@ function renderEditorTab(b, tab, theme) {
     b.ensure(blockH);
     const top = b.y;
     const x0 = M + labelW;
-    const w = chunk.length * colW;
+    const w = chunk.length * effColW;
     const firstY = top - headroom;                  // topmost string line
     const lastY = top - headroom - (S - 1) * rowH;   // bottom-most string line
 
@@ -205,7 +225,7 @@ function renderEditorTab(b, tab, theme) {
 
     if (theme.showGrid) {
       for (let c = 0; c <= chunk.length; c++) {
-        b.push({ kind: 'line', x1: x0 + c * colW, y1: lastY, x2: x0 + c * colW, y2: firstY, w: 0.3, color: theme.grid });
+        b.push({ kind: 'line', x1: x0 + c * effColW, y1: lastY, x2: x0 + c * effColW, y2: firstY, w: 0.3, color: theme.grid });
       }
     }
 
@@ -219,7 +239,7 @@ function renderEditorTab(b, tab, theme) {
         if (fret === undefined || fret === null || fret === '') return;
         const txt = String(fret);
         const tw = pdfTextWidth(txt, size);
-        rowNotes.push({ txt, tw, cx: x0 + (c + 0.5) * colW });
+        rowNotes.push({ txt, tw, cx: x0 + (c + 0.5) * effColW });
       });
 
       if (theme.breakLine) {
@@ -285,9 +305,28 @@ function renderTabTitle(b, tab, theme) {
   }
 }
 
+function countNotes(tab) {
+  let n = 0;
+  (tab.steps || []).forEach((s) => { n += Object.keys(s.notes || {}).length; });
+  return n;
+}
+
+/* Auto orientation: portrait for many short tabs, landscape when some tab
+   is long and full of notes (it would wrap into many rows in portrait). */
+function chooseOrientation(proj) {
+  const longFull = (proj.tabs || []).some((t) => (t.steps || []).length > 26 && countNotes(t) >= 13);
+  return longFull ? 'landscape' : 'portrait';
+}
+
 /* Build the list of drawing items, paginated over A4 pages. */
 function projectPdfPages(proj, opts) {
   const format = opts && opts.format === 'text' ? 'text' : 'editor';
+  const orient = opts && opts.orientation && opts.orientation !== 'auto'
+    ? opts.orientation
+    : chooseOrientation(proj);
+  const page = PDF_A4[orient] || PDF_A4.portrait;
+  PDF_PAGE.w = page.w;
+  PDF_PAGE.h = page.h;
   const theme = format === 'text'
     ? PDF_THEMES.plain
     : (PDF_THEMES[(opts && opts.theme) || 'color'] || PDF_THEMES.color);
@@ -480,7 +519,7 @@ function pdfSwatch(theme) {
 function openPdfExportDialog(proj) {
   if (!proj) return;
   const cur = (currentProjectId === proj.id ? getTab() : null) || (proj.tabs || [])[0] || null;
-  const state = { format: 'editor', theme: 'color' };
+  const state = { format: 'editor', theme: 'color', orientation: 'auto' };
 
   const textPreview = cur
     ? tabToAscii(cur, cur.wrap || 28).split('\n').slice(0, 6).join('\n')
@@ -494,6 +533,16 @@ function openPdfExportDialog(proj) {
       <div class="opt-desc">${k === 'color' ? 'Round blue note markers, soft grid, colored title band.'
         : k === 'gray' ? 'Grayscale only — no color, light grid.'
         : 'Black on white, no fills, hairline strokes — least ink.'}</div>
+    </div>`;
+  }).join('');
+
+  const orientCards = ['auto', 'portrait', 'landscape'].map((k) => {
+    const title = k === 'auto' ? 'Auto' : k === 'portrait' ? 'Portrait' : 'Landscape';
+    return `<div class="opt-card opt-card-sm${k === 'auto' ? ' active' : ''}" data-orient="${k}">
+      <div class="opt-head"><span class="opt-title">${title}</span></div>
+      <div class="opt-desc">${k === 'auto' ? 'Chooses by tab length.'
+        : k === 'portrait' ? 'Classic A4 portrait.'
+        : 'Wide A4 landscape.'}</div>
     </div>`;
   }).join('');
 
@@ -512,6 +561,11 @@ function openPdfExportDialog(proj) {
           <div class="opt-preview"><pre class="opt-pre">${escapeHtml(textPreview)}</pre></div>
         </div>
       </div>
+    </div>
+    <div class="opt-section">
+      <div class="opt-label">Page orientation</div>
+      <div class="opt-grid opt-grid-3" id="pdf-orient-grid">${orientCards}</div>
+      <p class="opt-hint" id="pdf-orient-hint"></p>
     </div>
     <div class="opt-section" id="pdf-color-sec">
       <div class="opt-label">Colors</div>
@@ -532,6 +586,16 @@ function openPdfExportDialog(proj) {
   const applyTheme = () => {
     const t = PDF_THEMES[state.theme] || PDF_THEMES.color;
     if (prev) prev.setAttribute('style', pdfThemeVars(t));
+  };
+  const orientHint = $('pdf-orient-hint');
+  const updateOrientHint = () => {
+    if (state.orientation === 'auto') {
+      const o = chooseOrientation(proj);
+      orientHint.innerHTML = `Auto keeps the page <b>${o === 'landscape' ? 'landscape' : 'portrait'}</b>` +
+        (o === 'landscape' ? ' — long tabs with many notes fit better in landscape.' : ' — many short tabs fit better in portrait.');
+    } else {
+      orientHint.innerHTML = `The pages are exported in <b>${state.orientation}</b>.`;
+    }
   };
   const showColors = () => {
     colorSec.classList.toggle('hidden', state.format !== 'editor');
@@ -554,15 +618,24 @@ function openPdfExportDialog(proj) {
       applyTheme();
     };
   });
+  const orCards = Array.from(body.querySelectorAll('[data-orient]'));
+  orCards.forEach((card) => {
+    card.onclick = () => {
+      state.orientation = card.dataset.orient;
+      orCards.forEach((c) => c.classList.toggle('active', c === card));
+      updateOrientHint();
+    };
+  });
   applyTheme();
   showColors();
+  updateOrientHint();
 
   const ok = $('modal-ok');
   ok.classList.remove('hidden');
   ok.textContent = 'Download PDF';
   ok.onclick = () => {
     closeModal();
-    exportProjectPdf(proj, null, { format: state.format, theme: state.theme });
+    exportProjectPdf(proj, null, { format: state.format, theme: state.theme, orientation: state.orientation });
   };
 }
 

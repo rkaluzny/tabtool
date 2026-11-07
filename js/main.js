@@ -8,7 +8,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#232323',
-    title: 'TabTool 1.0.0',
+    title: 'TabTool 1.1.0',
     icon: path.join(__dirname, '..', 'build/icon.png'),
     autoHideMenuBar: true
   });
