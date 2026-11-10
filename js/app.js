@@ -231,6 +231,11 @@ function init() {
       insertDigit(digit, e.ctrlKey || e.altKey || chordLatch);
       return;
     }
+    if (e.key && e.key.toLowerCase() === 'x' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      insertMute(chordLatch);
+      return;
+    }
     if (e.key === 'Backspace' || e.key === 'Enter') { e.preventDefault(); deleteLastNote(); return; }
     if (e.key === 'Delete') { e.preventDefault(); deleteLastNote(); return; }
     if (e.key === ' ') { e.preventDefault(); insertGap(); return; }

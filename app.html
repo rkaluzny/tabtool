@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>TabTool 1.1.0</title>
+<title>TabTool 1.2.0</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico" />
 <link rel="stylesheet" href="styles.css" />
 </head>
@@ -57,13 +57,13 @@
 
         <div class="staff-toolbar">
           <div class="string-picker" id="string-picker" title="Active string (Shift+number)"></div>
-          <div class="staff-hint" id="staff-hint">String <b id="hint-string">1</b> active — type <b>0–9</b> to write · hold <b>Ctrl</b> (<b>Alt</b> works too) or toggle <b>Chord</b>: everything typed lands in <b>one new column</b> · <b>←</b>/<b>→</b> alternate between ON a note (two lines — type edits that column) and BETWEEN notes (one line — type inserts a new one) · <b>↑</b>/<b>↓</b> change the string, never the slot · <b>Esc</b> drops to the one-line gap · <b>⌫</b> deletes · <b>Space</b> = gap</div>
+          <div class="staff-hint" id="staff-hint">String <b id="hint-string">1</b> active — type <b>0–9</b> for a fret or <b>X</b> for do not play · hold <b>Ctrl</b> (<b>Alt</b> works too) or toggle <b>Chord</b>: everything typed lands in <b>one new column</b> · <b>←</b>/<b>→</b> alternate between ON a note (two lines — type edits that column) and BETWEEN notes (one line — type inserts a new one) · <b>↑</b>/<b>↓</b> change the string, never the slot · <b>Esc</b> drops to the one-line gap · <b>⌫</b> deletes · <b>Space</b> = gap</div>
         </div>
 
         <div id="staff-scroll" class="staff-scroll" tabindex="0">
           <div id="staff" class="staff"></div>
           <div class="staff-empty hidden" id="staff-empty">
-            <p>No notes yet. Select a string, then just start typing numbers.</p>
+            <p>No notes yet. Select a string, then type a fret number or X for do not play.</p>
             <p class="muted">Tip: <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> picks the string · hold <kbd>Ctrl</kbd> to stack a chord · <kbd>Space</kbd> adds silence.</p>
           </div>
         </div>

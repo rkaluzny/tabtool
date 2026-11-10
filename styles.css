@@ -502,8 +502,21 @@ body {
   box-shadow: 0 0 0 3px var(--orange-soft)
 }
 
+.cell .note.muted {
+  background: transparent;
+  border-color: transparent;
+  color: #e5484d;
+  font-size: 24px;
+  padding: 0;
+}
+
 .srow.active .cell .note {
   outline: 2px solid var(--orange)
+}
+
+.np-btn.np-mute {
+  color: #e5484d;
+  font-weight: 800
 }
 
 .cell.cursor-after::after {

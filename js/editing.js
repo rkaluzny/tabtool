@@ -99,6 +99,47 @@ function insertDigit(digit, asChord) {
   }
   touch(); renderEditor(); scrollCursorIntoView();
 }
+function insertMute(asChord) {
+  const t = getTab();
+  if (!t) return;
+  ensureTabStrings(t);
+  const s = String(t.activeString);
+  pushUndo();
+
+  if (asChord) {
+    let idx = -1;
+    if (selected && t.steps[selected.step]) idx = selected.step;
+    else if (chordAnchor >= 0 && t.steps[chordAnchor]) idx = chordAnchor;
+    if (idx < 0) {
+      t.steps.splice(cursorPos, 0, { notes: {}, order: [] });
+      idx = cursorPos++;
+    }
+    chordAnchor = idx;
+    const st = t.steps[idx];
+    st.notes = st.notes || {};
+    st.order = st.order || [];
+    if (!st.order.includes(t.activeString)) st.order.push(t.activeString);
+    st.notes[s] = 'X';
+    selected = { step: idx, string: t.activeString };
+    cursorPos = Math.min(t.steps.length, idx + 1);
+  } else if (selected && t.steps[selected.step]) {
+    const idx = selected.step;
+    const st = t.steps[idx];
+    st.notes = st.notes || {};
+    st.order = st.order || [];
+    if (!st.order.includes(t.activeString)) st.order.push(t.activeString);
+    st.notes[s] = 'X';
+    selected = { step: idx, string: t.activeString };
+  } else {
+    t.steps.splice(cursorPos, 0, { notes: { [s]: 'X' }, order: [t.activeString] });
+    cursorPos++;
+    chordAnchor = -1;
+    selected = null;
+  }
+
+  lastDigitTime = 0;
+  touch(); renderEditor(); scrollCursorIntoView();
+}
 function insertGap() {
   const t = getTab();
   if (!t) return;
@@ -225,4 +266,3 @@ function renameString(stringNo) {
     $('staff-scroll').focus();
   });
 }
-

@@ -239,7 +239,7 @@ function renderEditorTab(b, tab, theme) {
         if (fret === undefined || fret === null || fret === '') return;
         const txt = String(fret);
         const tw = pdfTextWidth(txt, size);
-        rowNotes.push({ txt, tw, cx: x0 + (c + 0.5) * effColW });
+        rowNotes.push({ txt, tw, cx: x0 + (c + 0.5) * effColW, muted: txt.toUpperCase() === 'X' });
       });
 
       if (theme.breakLine) {
@@ -261,7 +261,7 @@ function renderEditorTab(b, tab, theme) {
 
       // the numbers themselves
       rowNotes.forEach((n) => {
-        if (theme.noteBg) {
+        if (theme.noteBg && !n.muted) {
           // a round marker: a circle for single digits, a pill for two digits
           const boxH = size + 5;
           const boxW = Math.max(boxH, n.tw + 8);
@@ -271,7 +271,7 @@ function renderEditorTab(b, tab, theme) {
             b.push({ kind: 'rect', x: n.cx - boxW / 2, y: lineY - boxH / 2, w: boxW, h: boxH, fill: theme.noteBg });
           }
         }
-        b.push({ kind: 'text', text: pdfSanitize(n.txt), size, bold: true, x: n.cx - n.tw / 2, y: lineY - (PDF_CAP * size) / 2, color: theme.noteText });
+        b.push({ kind: 'text', text: pdfSanitize(n.txt), size, bold: true, x: n.cx - n.tw / 2, y: lineY - (PDF_CAP * size) / 2, color: n.muted ? [0.85, 0.12, 0.16] : theme.noteText });
       });
     }
     // separator between the tuning labels and the tab itself
@@ -499,8 +499,9 @@ function pdfPreviewSvg(tab) {
       const fret = st.notes ? st.notes[String(r2)] : undefined;
       if (fret === undefined || fret === null || fret === '') return;
       const cx = labelW + (c + 0.5) * colW;
-      out += `<circle cx="${cx.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="var(--pdf-noteBg, none)"/>`;
-      out += `<text x="${cx.toFixed(1)}" y="${(y + 3).toFixed(1)}" font-size="8" font-weight="700" text-anchor="middle" fill="var(--pdf-noteText, var(--pdf-note))">${escapeHtml(String(fret))}</text>`;
+      const isMute = String(fret).toUpperCase() === 'X';
+      if (!isMute) out += `<circle cx="${cx.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="var(--pdf-noteBg, none)"/>`;
+      out += `<text x="${cx.toFixed(1)}" y="${(y + 3).toFixed(1)}" font-size="8" font-weight="700" text-anchor="middle" fill="${isMute ? '#d62828' : 'var(--pdf-noteText, var(--pdf-note))'}">${escapeHtml(String(fret))}</text>`;
     });
   }
   return `<svg class="opt-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
@@ -653,4 +654,3 @@ function downloadBlob(filename, blob) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
-

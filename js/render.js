@@ -188,9 +188,10 @@ function renderStaff() {
       const fret = st.notes ? st.notes[String(s)] : undefined;
       if (fret !== undefined && fret !== null && fret !== '') {
         const n = document.createElement('span');
-        n.className = 'note' + (selected && selected.step === idx && selected.string === s ? ' selected' : '');
+        const isMute = String(fret).toUpperCase() === 'X';
+        n.className = 'note' + (isMute ? ' muted' : '') + (selected && selected.step === idx && selected.string === s ? ' selected' : '');
         n.textContent = fret;
-        n.title = `String ${s}, step ${idx + 1}: fret ${fret} — click to edit, right-click to delete`;
+        n.title = `String ${s}, step ${idx + 1}: ${isMute ? 'do not play' : `fret ${fret}`} — click to edit, right-click to delete`;
         n.onclick = (e) => {
           e.stopPropagation();
           // Clicking a note selects it for in-place editing instead of
@@ -280,6 +281,12 @@ function renderNumpad() {
     b.onclick = () => insertDigit(String(d), chordLatch);
     np.appendChild(b);
   }
+  const mute = document.createElement('button');
+  mute.className = 'np-btn np-mute';
+  mute.textContent = 'X';
+  mute.title = chordLatch ? 'Add a do-not-play X to the open chord column' : 'Write X (do not play) as a new entry';
+  mute.onclick = () => insertMute(chordLatch);
+  np.appendChild(mute);
   $('btn-chord').classList.toggle('active', chordLatch);
 }
 
@@ -287,4 +294,3 @@ function scrollCursorIntoView() {
   const el = document.querySelector('.cell.cursor-on') || document.querySelector('.cell.cursor-after');
   if (el) el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
-

@@ -1,4 +1,4 @@
-# TabTool 1.1.0
+# TabTool 1.2.0
 
 Quick guitar-tab writer — vanilla JS + HTML/CSS, wrapped with Electron.
 
@@ -6,7 +6,7 @@ Quick guitar-tab writer — vanilla JS + HTML/CSS, wrapped with Electron.
 
 - As a web app: just open `index.html` in a browser.
 - As Electron: `npm install` then `npm start`.
-- Linux builds: `npm run dist` → `dist/TabTool-1.1.0.AppImage` and `dist/tabtool_1.1.0_amd64.deb`.
+- Linux builds: `npm run dist` → `dist/TabTool-1.2.0.AppImage` and `dist/tabtool_1.2.0_amd64.deb`.
 
 ## Build installers
 
@@ -19,8 +19,8 @@ dependencies installed once with `npm install`.
 npm run dist:linux
 ```
 
-Produces `dist/TabTool-1.1.0.AppImage` (run directly, no install needed) and
-`dist/tabtool_1.1.0_amd64.deb` (install with `sudo dpkg -i ...`, adds a
+Produces `dist/TabTool-1.2.0.AppImage` (run directly, no install needed) and
+`dist/tabtool_1.2.0_amd64.deb` (install with `sudo dpkg -i ...`, adds a
 launcher + menu entry). Needs `dpkg-deb`/`fakeroot` for the `.deb`, both
 present on Debian/Ubuntu/Mint.
 
@@ -30,8 +30,8 @@ present on Debian/Ubuntu/Mint.
 npm run dist:win
 ```
 
-Produces `dist/TabTool-1.1.0-setup.exe` (NSIS installer) and
-`dist/TabTool-1.1.0-portable.exe` (no install needed). No Windows machine
+Produces `dist/TabTool-1.2.0-setup.exe` (NSIS installer) and
+`dist/TabTool-1.2.0-portable.exe` (no install needed). No Windows machine
 required — electron-builder downloads its NSIS tools automatically. Without a
 code-signing certificate Windows SmartScreen will warn on first launch; that
 is expected for self-distributed apps.
@@ -42,7 +42,7 @@ is expected for self-distributed apps.
 npm run dist:mac
 ```
 
-Produces `dist/TabTool-1.1.0.dmg` and `dist/TabTool-1.1.0-mac.zip`. Apple
+Produces `dist/TabTool-1.2.0.dmg` and `dist/TabTool-1.2.0-mac.zip`. Apple
 platforms can only be packaged on macOS, so run this on a Mac with Xcode
 command-line tools installed. Without an Apple Developer signature +
 notarization, Gatekeeper will block the app on first launch (right-click →
@@ -61,6 +61,7 @@ App icon source is the blue badge cropped from `icon.png`:
 3. Just type numbers — they appear instantly on the highlighted string.
    - `Shift+1…6` picks the string (1 = high e top, 6 = low E bottom) — or just press its tuning letter `E A D G B` (single `E` = low E, double-press `E` = high e)
    - `0…9` writes a note; type fast twice for `10…24` (e.g. `1` then `2` = `12`)
+   - `X` marks a string as “do not play”; it appears as a red X in the editor and as `X` in text exports
    - hold `Ctrl` (or `Alt`, or latch the **Chord** button) to write a chord: everything typed while held goes into **one new column**, previous notes are never touched. `Shift+1…6` still switches strings mid-chord. Release to finish the chord
    - `Backspace` / `Enter` deletes the last note, `Space` adds a silent gap
    - `↑/↓` changes string, `←/→` moves the cursor

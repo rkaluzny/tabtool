@@ -27,6 +27,7 @@ function openHelp() {
   <p><b>Fast tab writing:</b> pick a tab on the right, then just type numbers — they appear instantly.</p>
   <ul>
     <li><kbd>0</kbd>…<kbd>9</kbd> — write a note on the active string (new column each time)</li>
+    <li><kbd>X</kbd> — mark the active string as “do not play” in the current/new column</li>
     <li>Type fast twice (e.g. <kbd>1</kbd> then <kbd>2</kbd>) → fret <b>12</b> (up to max)</li>
     <li><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> — choose string (highlighted row). Faster: just press the string's tuning letter (<kbd>E</kbd> <kbd>A</kbd> <kbd>D</kbd> <kbd>G</kbd> <kbd>B</kbd> on a standard 6-string) — if two strings share a letter, a single press picks the lower one, a fast double-press picks the upper one</li>
     <li>Hold <kbd>Ctrl</kbd> (or <kbd>Alt</kbd> if your browser steals <kbd>Ctrl</kbd>+number to switch tabs) — everything you type while it is held goes into <b>one new column</b> without touching previous notes. While holding it, <kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> still switches strings, so: hold <kbd>Ctrl</kbd> → <kbd>5</kbd> → <kbd>Shift</kbd>+<kbd>2</kbd> → <kbd>7</kbd> writes a chord with fret 5 on string 1 and fret 7 on string 2. Release <kbd>Ctrl</kbd> to finish the chord. Two-digit frets (<kbd>1</kbd> then <kbd>2</kbd> fast = <b>12</b>) work inside chords too. The <i>Chord</i> button latches the same: toggle on, type the chord, toggle off</li>
@@ -38,4 +39,3 @@ function openHelp() {
   </ul>
   <p><b>Text export:</b> one line per string with its tuning label + dashes, numbers in regular steps — the classic guitarist text-tab. Use ⎙ TXT. For Word/LibreOffice use the <b>Copy</b> button (preserves monospace) or <b>Download .rtf</b>; if lines wrap in the document, lower “Steps per line”.</p>`);
 }
-
